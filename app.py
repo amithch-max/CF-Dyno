@@ -3,14 +3,16 @@ import numpy as np
 import plotly.graph_objects as go
 from core import geometry
 
-st.set_page_config(page_title="CF-Dyno Phase 3", layout="wide")
-st.title("CF-Dyno: Phase 3 (Interactive 3D View)")
-st.markdown("**Status:** Rendering with Plotly (Stable) | **Mode:** Voxel Inspector")
+st.set_page_config(page_title="CF-Dyno High-Res Mesh", layout="wide")
+st.title("CF-Dyno: High-Res Mesh Inspector")
+st.markdown("**Mode:** Geometry Check (Phase 3.5) | **Max Res:** 200")
 
 # --- SIDEBAR ---
-st.sidebar.header("1. Input")
+st.sidebar.header("1. Geometry Input")
 uploaded_file = st.sidebar.file_uploader("Upload .STL", type=['stl'])
-resolution = st.sidebar.slider("Resolution", 32, 64, 40) # Keep low for speed
+
+# UNLOCKED: We allow up to 200 for high-detail meshing
+resolution = st.sidebar.slider("Grid Resolution", 50, 200, 100) 
 
 # --- MAIN ---
 col1, col2 = st.columns([1, 2])
@@ -18,10 +20,11 @@ col1, col2 = st.columns([1, 2])
 if uploaded_file is not None:
     # 1. GENERATE GRID
     if 'grid' not in st.session_state or st.sidebar.button("Regenerate Mesh"):
-        with st.spinner("Voxelizing geometry..."):
+        with st.spinner(f"Voxelizing at High Resolution ({resolution})..."):
+            # This runs on Colab (Fast CPU)
             grid = geometry.load_and_voxelize(uploaded_file, resolution)
             st.session_state['grid'] = grid
-            st.success("Mesh Updated!")
+            st.success(f"Mesh Ready: {grid.shape} cells")
 
     # 2. VISUALIZE
     if 'grid' in st.session_state:
@@ -30,26 +33,41 @@ if uploaded_file is not None:
         with col1:
             st.markdown("### Mesh Stats")
             st.write(f"**Grid Size:** {grid.shape}")
-            st.write(f"**Solid Cells:** {np.sum(grid)}")
-            st.info("The Plotly engine renders this natively in your browser.")
+            st.write(f"**Solid Voxels:** {np.sum(grid)}")
+            
+            # Advice
+            if max(grid.shape) > 120:
+                st.warning("⚠️ High Resolution detected. Downsampling view to prevent browser crash.")
 
         with col2:
-            st.markdown("### Interactive 3D Preview")
-            with st.spinner("Generating 3D Plot..."):
-                # Create coordinates for the Volume Plot
-                X, Y, Z = np.mgrid[0:grid.shape[0], 0:grid.shape[1], 0:grid.shape[2]]
+            st.markdown("### 3D Voxel Preview")
+            with st.spinner("Rendering Plot..."):
                 
-                # We use Isosurface to draw the boundary between 0 (Fluid) and 1 (Solid)
+                # --- INTELLIGENT DOWNSAMPLING ---
+                # We skip pixels ONLY for the visualizer.
+                # The actual grid in memory stays High-Res for Phase 4.
+                stride = 1
+                if max(grid.shape) > 100: stride = 2
+                if max(grid.shape) > 150: stride = 3
+                
+                # Create a lighter version for Plotly
+                d_grid = grid[::stride, ::stride, ::stride]
+                
+                # Create Coordinates
+                X, Y, Z = np.mgrid[0:d_grid.shape[0], 0:d_grid.shape[1], 0:d_grid.shape[2]]
+                
+                # Render Volume
                 fig = go.Figure(data=go.Volume(
                     x=X.flatten(),
                     y=Y.flatten(),
                     z=Z.flatten(),
-                    value=grid.flatten(),
-                    isomin=0.5,
+                    value=d_grid.flatten(),
+                    isomin=0.5, # Show only solids (1)
                     isomax=1.5,
-                    opacity=0.3, # Semi-transparent
-                    surface_count=2,
-                    colorscale='Jet',
+                    opacity=0.6,
+                    surface_count=1, # Just the surface
+                    colorscale='Spectral', 
+                    caps=dict(x_show=False, y_show=False, z_show=False)
                 ))
                 
                 fig.update_layout(scene=dict(
@@ -61,4 +79,4 @@ if uploaded_file is not None:
                 st.plotly_chart(fig, use_container_width=True)
 
 else:
-    st.info("Upload an STL file to see the 3D Engine in action.")
+    st.info("Upload an STL file to test the High-Res Engine.")
