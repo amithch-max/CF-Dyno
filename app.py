@@ -68,7 +68,7 @@ if uploaded_file is not None:
                 # 4. Export to HTML (Client-side interactivity)
                 # We save it to a temp file and read it back
                 with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as tmp:
-                    plotter.export_html(tmp.name, backend='pythreejs')
+                    plotter.export_html(tmp.name)
                     tmp.seek(0)
                     html_content = tmp.read().decode('utf-8')
                 
