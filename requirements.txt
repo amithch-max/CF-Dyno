@@ -1,12 +1,6 @@
 streamlit
 numpy
-matplotlib
+plotly
 pyngrok
 trimesh
-pyvista
 scikit-image
-pyvirtualdisplay
-trame
-trame-vuetify
-trame-vtk
-ipywidgets
