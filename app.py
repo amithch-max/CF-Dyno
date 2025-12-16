@@ -50,7 +50,7 @@ if uploaded_file is not None:
             with st.spinner("Rendering 3D Scene..."):
                 # --- PYVISTA CONVERSION ---
                 # 1. Create a structured grid compatible with the numpy array
-                pv_grid = pv.UniformGrid()
+                pv_grid = pv.ImageData()
                 pv_grid.dimensions = np.array(grid.shape) + 1
                 pv_grid.spacing = (1, 1, 1)
                 pv_grid.cell_data["values"] = grid.flatten(order="F") 
