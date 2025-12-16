@@ -5,3 +5,4 @@ pyngrok
 trimesh
 pyvista
 scikit-image
+pyvirtualdisplay
