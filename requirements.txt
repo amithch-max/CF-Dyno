@@ -6,3 +6,7 @@ trimesh
 pyvista
 scikit-image
 pyvirtualdisplay
+trame
+trame-vuetify
+trame-vtk
+ipywidgets
