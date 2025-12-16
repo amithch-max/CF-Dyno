@@ -2,3 +2,6 @@ streamlit
 numpy
 matplotlib
 pyngrok
+trimesh
+pyvista
+scikit-image
