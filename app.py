@@ -1,44 +1,49 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-from core import solver2d
-import time
+from core import geometry
 
-st.set_page_config(page_title="CF-Dyno Phase 1", layout="wide")
-st.title("CF-Dyno: Phase 1 (Connectivity Test)")
-st.markdown("**Status:** Pipeline Active | **Mode:** 2D Verification")
+st.set_page_config(page_title="CF-Dyno Phase 2", layout="wide")
+st.title("CF-Dyno: Phase 2 (3D Mesh Engine)")
+st.markdown("**Status:** Ready for 3D Geometry | **Mode:** Voxelization Test")
 
+# --- SIDEBAR ---
+st.sidebar.header("Geometry Input")
+uploaded_file = st.sidebar.file_uploader("Upload .STL or .OBJ", type=['stl', 'obj'])
+resolution = st.sidebar.slider("Mesh Resolution", 32, 128, 64)
+
+# --- MAIN DISPLAY ---
 col1, col2 = st.columns(2)
-with col1:
-    grid_size = st.slider("Grid Resolution", 50, 200, 100)
-    viscosity = st.slider("Viscosity", 0.01, 0.1, 0.02)
-with col2:
-    st.info("This interface runs on Google Colab via Ngrok tunnel.")
-    start_btn = st.button("Start Simulation")
 
-if start_btn:
-    nx, ny = grid_size * 2, grid_size
-    omega = 1.0 / (3.0 * viscosity + 0.5)
+if uploaded_file is not None:
+    with col1:
+        st.info(f"File: {uploaded_file.name}")
+        if st.button("Generate Voxel Mesh"):
+            with st.spinner("Voxelizing... (This happens on Google Colab)"):
+                # CALL THE NEW CORE MODULE
+                grid = geometry.load_and_voxelize(uploaded_file, resolution)
 
-    nl = 9
-    F = np.ones((ny, nx, nl)) + 0.01 * np.random.randn(ny, nx, nl)
-    F[:, :, 3] += 2.0
+                st.success(f"Mesh Generated! Grid Shape: {grid.shape}")
 
-    y, x = np.ogrid[0:ny, 0:nx]
-    obstacle = (x - nx/4)**2 + (y - ny/2)**2 < (ny/9)**2
+                # Store in session state to keep it active
+                st.session_state['grid'] = grid
 
-    plot_placeholder = st.empty()
+    with col2:
+        if 'grid' in st.session_state:
+            grid = st.session_state['grid']
+            nz, ny, nx = grid.shape
 
-    for i in range(100):
-        F, velocity = solver2d.solve_lbm_frame(F, obstacle, omega)
+            # VISUALIZE A SLICE
+            # We can't easily show 3D in Streamlit without heavy lags yet,
+            # so we show a 'CT Scan' slice of the mesh.
+            slice_idx = st.slider("Slice View (Z-Axis)", 0, nz-1, nz//2)
 
-        fig, ax = plt.subplots(figsize=(10, 3))
-        velocity[obstacle] = np.nan 
-        ax.imshow(velocity, cmap='jet')
-        ax.axis('off')
-        ax.set_title(f"Velocity Magnitude - Frame {i}")
+            st.write(f"Cross-section at Z={slice_idx}")
+            # 1 = Solid (Yellow), 0 = Fluid (Purple)
+            st.image(grid[slice_idx, :, :] * 255, width=400, caption="White=Solid, Black=Fluid")
 
-        plot_placeholder.pyplot(fig)
-        plt.close(fig)
-
-    st.success("Simulation Complete")
+else:
+    st.warning("Please upload a 3D file to test the mesher.")
+    st.markdown("""
+    **No file?** Download a simple cube or sphere STL from the internet, 
+    or search "low poly stl" on Google.
+    """)
